@@ -9,7 +9,7 @@ const OpenAI = require('openai');
 const {
   Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
   WidthType, AlignmentType, BorderStyle, Header, ImageRun, HeadingLevel,
-  VerticalAlign
+  VerticalAlign, HeightRule
 } = require('docx');
 
 const app = express();
@@ -44,21 +44,28 @@ app.post('/api/gerar-ata', async (req, res) => {
   if (!process.env.OPENAI_API_KEY) return res.json({ ata: fallback, modo: 'modelo-local' });
   try {
     const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const perfis = {
+      media: { palavras: '700 a 1.000 palavras', paragrafos: '7 a 10 parágrafos', tokens: 4500 },
+      longa: { palavras: '1.100 a 1.500 palavras', paragrafos: '10 a 14 parágrafos', tokens: 6500 },
+      muito_longa: { palavras: '1.600 a 2.200 palavras', paragrafos: '14 a 20 parágrafos', tokens: 8500 }
+    };
+    const perfil = perfis[data.tamanhoAta] || perfis.muito_longa;
     const prompt = `Você redige atas de ATPC de uma escola pública estadual de São Paulo.
 
 OBJETIVO DE EXTENSÃO:
 - A ATPC corresponde a 2 aulas de 50 minutos (100 minutos).
-- Gere SEMPRE uma ata longa, detalhada e consistente com um encontro formativo de aproximadamente 100 minutos.
-- Como referência, produza aproximadamente 900 a 1.400 palavras, distribuídas em 8 a 12 parágrafos bem desenvolvidos.
-- O texto deve ser substancioso, mas sem repetições artificiais, enchimento ou frases vazias.
+- Gere uma ata realmente extensa, detalhada e consistente com um encontro formativo de aproximadamente 100 minutos.
+- Tamanho solicitado: ${perfil.palavras}, distribuídas em aproximadamente ${perfil.paragrafos} bem desenvolvidos.
+- NÃO encerre a ata cedo. Desenvolva cada assunto antes de avançar para o próximo.
+- Evite repetição mecânica, mas aprofunde os temas com contextualização, exemplos, dúvidas, intervenções, reflexões, orientações e encaminhamentos plausíveis.
 
 REGRAS DE CONTEÚDO:
 - Produza uma ata formal, clara, pedagógica e adequada a registro escolar oficial.
 - Você PODE desenvolver fatos pedagógicos plausíveis, falas indiretas, exemplos de discussão, dúvidas, intervenções e encaminhamentos para dar corpo ao registro, desde que sejam coerentes com a pauta e com os detalhes fornecidos e não contradigam nenhuma informação informada.
 - Não invente nomes de pessoas, números, resultados quantitativos, leis específicas ou acontecimentos externos verificáveis que não tenham sido fornecidos.
-- Use obrigatoriamente TODOS os pontos de "Informações que não podem faltar" e desenvolva cada um deles de forma contextualizada.
+- Use obrigatoriamente TODOS os pontos de "Informações que não podem faltar" e desenvolva cada um deles de forma contextualizada e aprofundada.
 - Use a PAUTA apenas como referência interna para organizar e contextualizar o encontro; NÃO crie no texto uma seção intitulada "Pauta" e NÃO copie a pauta em formato de lista.
-- Desenvolva o relato em sequência lógica: abertura do encontro, contextualização dos temas, discussão pedagógica, orientações, reflexões dos docentes, análise dos pontos informados, encaminhamentos e fechamento.
+- Desenvolva o relato em sequência lógica: abertura do encontro, contextualização dos temas, apresentação das questões centrais, discussão pedagógica, intervenções da coordenação, participação e reflexões dos docentes, exemplos relacionados à prática escolar, análise dos pontos informados, esclarecimento de dúvidas, encaminhamentos e fechamento.
 - Quando houver encaminhamentos/combinados, incorpore-os naturalmente ao final da ata.
 - Quando houver um professor indicado em "redator", mencione de forma natural em algum ponto do texto corrido que esse professor realizou o registro da ata, sem criar título, campo, linha ou destaque separado para isso.
 - Cite o coordenador principal, a data e o horário quando esses dados forem fornecidos.
@@ -66,7 +73,8 @@ REGRAS DE CONTEÚDO:
 - Não liste CPFs/RGs no corpo da ata.
 - Não mencione que o texto foi gerado por IA.
 - Não transforme o texto em tópicos; escreva em parágrafos corridos e formais.
-- Se as informações fornecidas forem curtas, amplie o texto com desenvolvimento pedagógico plausível e coerente com o tema, incluindo reflexões, exemplos, dúvidas e intervenções compatíveis com uma formação de 100 minutos.
+- Se as informações fornecidas forem curtas, amplie substancialmente o texto com desenvolvimento pedagógico plausível e coerente com o tema, suficiente para representar uma formação de 100 minutos.
+- Faça transições naturais entre os assuntos e encerre somente após registrar as discussões, reflexões, orientações e encaminhamentos de forma completa.
 
 DADOS:
 ${JSON.stringify(data, null, 2)}
@@ -74,7 +82,8 @@ ${JSON.stringify(data, null, 2)}
 Escreva somente o texto final da ata.`;
     const response = await client.responses.create({
       model: process.env.OPENAI_MODEL || 'gpt-5.6',
-      input: prompt
+      input: prompt,
+      max_output_tokens: perfil.tokens
     });
     const text = response.output_text?.trim();
     res.json({ ata: text || fallback, modo: text ? 'ia' : 'modelo-local' });
@@ -107,19 +116,22 @@ function buildDocx(data) {
   const rows = [
     new TableRow({ children: [
       cell('Nº', { bold: true, width: 6, align: AlignmentType.CENTER }),
-      cell('NOME DO PROFESSOR', { bold: true, width: 42, align: AlignmentType.CENTER }),
-      cell('CPF OU RG', { bold: true, width: 18, align: AlignmentType.CENTER }),
-      cell('SITUAÇÃO', { bold: true, width: 14, align: AlignmentType.CENTER }),
-      cell('ASSINATURA', { bold: true, width: 20, align: AlignmentType.CENTER })
+      cell('NOME DO PROFESSOR', { bold: true, width: 35, align: AlignmentType.CENTER }),
+      cell('CPF OU RG', { bold: true, width: 16, align: AlignmentType.CENTER }),
+      cell('SITUAÇÃO', { bold: true, width: 13, align: AlignmentType.CENTER }),
+      cell('ASSINATURA', { bold: true, width: 30, align: AlignmentType.CENTER })
     ]})
   ];
-  professores.forEach((p, i) => rows.push(new TableRow({ children: [
-    cell(String(i+1), { align: AlignmentType.CENTER }),
-    cell(p.nome),
-    cell(p.documento || ''),
-    cell(p.situacao || 'Presente', { align: AlignmentType.CENTER }),
-    cell('________________________', { align: AlignmentType.CENTER })
-  ]})));
+  professores.forEach((p, i) => rows.push(new TableRow({
+    height: { value: 850, rule: HeightRule.ATLEAST },
+    children: [
+      cell(String(i+1), { width: 6, align: AlignmentType.CENTER }),
+      cell(p.nome, { width: 35 }),
+      cell(p.documento || '', { width: 16 }),
+      cell(p.situacao || 'Presente', { width: 13, align: AlignmentType.CENTER }),
+      cell('________________________________', { width: 30, align: AlignmentType.CENTER })
+    ]
+  })));
 
   const children = [
     new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'REGISTRO DE ATPC', bold: true, size: 28 })] }),

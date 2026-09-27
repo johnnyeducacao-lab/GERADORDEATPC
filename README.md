@@ -3,10 +3,10 @@
 Projeto completo para registrar ATPCs, gerar atas com IA, gerar DOCX com cabeçalho oficial e converter o próprio DOCX para PDF.
 
 ## Já vem cadastrado
-- Johnny — quinta, 16:40
-- Nailson — quinta, 19:00–20:30
-- Vânia — quarta, 13:00
-- Rosa — quarta, 10:40
+- Johnny Dias Carvalho — quinta, 16:40
+- Jose Nailson Goncalves Ferreira — quinta, 19:00–20:30
+- Vania Novaes Reboucas — quarta, 13:00
+- Rosa Aparecida Acacia de Oliveira — quarta, 10:40
 - Listas de professores fornecidas pelo usuário, com CPF/RG quando informado.
 
 ## Funções
