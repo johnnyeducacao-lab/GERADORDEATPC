@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Gerador de ATPC • EE Renata Graziano</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <h1>Gerador de ATPC</h1>
+      <p>E.E. Renata Graziano de Oliveira Prado</p>
+    </div>
+    <button class="ghost" id="btnHistorico">Histórico</button>
+  </header>
+
+  <main class="layout">
+    <section class="card form-card">
+      <h2>Nova ATPC</h2>
+      <div class="grid two">
+        <label>Coordenador responsável
+          <select id="coordenador"></select>
+        </label>
+        <label>Data
+          <input id="data" type="date" />
+        </label>
+        <label>Horário inicial
+          <input id="inicio" type="time" />
+        </label>
+        <label>Horário final
+          <input id="fim" type="time" />
+        </label>
+      </div>
+
+      <fieldset>
+        <legend>Outros coordenadores participantes</legend>
+        <div id="coordsExtras" class="checks"></div>
+      </fieldset>
+
+      <div class="section-head">
+        <h3>Professores previstos</h3>
+        <button id="addProfessor" class="secondary">+ Adicionar professor</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Professor</th><th>CPF/RG</th><th>Situação</th><th></th></tr></thead>
+          <tbody id="professores"></tbody>
+        </table>
+      </div>
+
+      <label>Pauta da ATPC
+        <textarea id="pauta" rows="5" placeholder="Cole ou escreva a pauta planejada..."></textarea>
+      </label>
+      <label>Informações que NÃO podem faltar na ata
+        <textarea id="informacoes" rows="6" placeholder="Registre o que realmente foi discutido, dúvidas, orientações, decisões, exemplos apresentados etc."></textarea>
+      </label>
+      <label>Encaminhamentos / combinados
+        <textarea id="encaminhamentos" rows="4" placeholder="Ex.: Entregar o PEI até sexta-feira; revisar documentos; acompanhar estudantes..."></textarea>
+      </label>
+
+      <div class="grid two">
+        <label>Quem escreveu a ata
+          <select id="redator"></select>
+        </label>
+        <label>Outro responsável pela ata (opcional)
+          <input id="redatorOutro" type="text" placeholder="Digite apenas se não estiver na lista" />
+        </label>
+      </div>
+
+      <div class="actions">
+        <button id="gerarAta" class="primary">✨ Gerar ata com IA</button>
+        <button id="salvar" class="secondary">Salvar no histórico</button>
+      </div>
+
+      <label>Ata gerada
+        <textarea id="ata" rows="15" placeholder="A ata aparecerá aqui e poderá ser editada antes de gerar os documentos."></textarea>
+      </label>
+
+      <div class="actions doc-actions">
+        <button id="docx" class="primary">📄 Baixar DOCX</button>
+        <button id="pdf" class="primary">🧾 Baixar PDF (convertido do DOCX)</button>
+      </div>
+      <p class="hint">O PDF é criado no servidor a partir do DOCX usando LibreOffice. Para isso, publique usando o Dockerfile incluído.</p>
+    </section>
+
+    <aside class="card preview-card">
+      <h2>Prévia do documento</h2>
+      <img src="/assets/cabecalho-atpc.png" alt="Cabeçalho oficial da ATPC" class="header-preview" />
+      <div id="preview" class="paper"></div>
+    </aside>
+  </main>
+
+  <dialog id="historicoDialog">
+    <div class="dialog-head"><h3>Histórico salvo neste navegador</h3><button id="fecharHistorico">✕</button></div>
+    <div id="historicoLista"></div>
+  </dialog>
+
+<script src="/app.js"></script>
+</body>
+</html>
