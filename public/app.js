@@ -24,7 +24,6 @@ function dataExtenso(v){ if(!v)return ''; return new Intl.DateTimeFormat('pt-BR'
 
 function init(){
   coordenadores.forEach(c => $('coordenador').add(new Option(c,c)));
-  coordenadores.forEach(c => $('redator').add(new Option(c,c)));
   $('data').value = hoje();
   $('coordenador').value = 'Johnny';
   loadCoord();
@@ -42,7 +41,7 @@ function loadCoord(){
   const c=$('coordenador').value, cfg=base[c];
   $('inicio').value=cfg.inicio; $('fim').value=cfg.fim;
   professoresAtuais=cfg.professores.map(([nome,documento])=>({nome,documento,situacao:'Presente'}));
-  $('redator').value=c; $('redatorOutro').value='';
+  $('redatorOutro').value='';
   $('coordsExtras').innerHTML='';
   coordenadores.filter(x=>x!==c).forEach(x=>{
     const lab=document.createElement('label');
@@ -50,7 +49,16 @@ function loadCoord(){
     lab.querySelector('input').addEventListener('change',renderPreview);
     $('coordsExtras').appendChild(lab);
   });
-  renderProfessores(); renderPreview();
+  renderProfessores(); updateRedatorOptions(); renderPreview();
+}
+
+function updateRedatorOptions(preferido=''){
+  const sel=$('redator');
+  const atual=preferido || sel.value;
+  sel.innerHTML='';
+  professoresAtuais.forEach(p=>{ if(p.nome.trim()) sel.add(new Option(p.nome,p.nome)); });
+  if([...sel.options].some(o=>o.value===atual)) sel.value=atual;
+  else if(sel.options.length) sel.selectedIndex=0;
 }
 
 function renderProfessores(){
@@ -61,12 +69,12 @@ function renderProfessores(){
     tr.innerHTML=`<td><input class="teacher-name" value="${escapeHtml(p.nome)}"></td><td><input class="teacher-doc" value="${escapeHtml(p.documento||'')}" placeholder="CPF ou RG"></td><td><select class="teacher-status"><option>Presente</option><option>Ausente</option><option>Justificado</option></select></td><td><button class="remove" title="Remover desta ATPC">✕</button></td>`;
     const name=tr.querySelector('.teacher-name'), doc=tr.querySelector('.teacher-doc'), status=tr.querySelector('.teacher-status');
     status.value=p.situacao;
-    name.oninput=e=>{p.nome=e.target.value;renderPreview()}; doc.oninput=e=>{p.documento=e.target.value;renderPreview()};
+    name.oninput=e=>{const anterior=p.nome; p.nome=e.target.value; const eraSelecionado=$('redator').value===anterior; updateRedatorOptions(eraSelecionado?p.nome:$('redator').value); renderPreview()}; doc.oninput=e=>{p.documento=e.target.value;renderPreview()};
     status.onchange=e=>{p.situacao=e.target.value; renderProfessores();};
-    tr.querySelector('.remove').onclick=()=>{professoresAtuais.splice(i,1);renderProfessores()};
+    tr.querySelector('.remove').onclick=()=>{professoresAtuais.splice(i,1);renderProfessores();updateRedatorOptions()};
     body.appendChild(tr);
   });
-  renderPreview();
+  updateRedatorOptions(); renderPreview();
 }
 function escapeHtml(s=''){return String(s).replace(/[&<>\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
 function extras(){return [...$('coordsExtras').querySelectorAll('input:checked')].map(x=>x.value)}
@@ -93,7 +101,7 @@ async function gerarAta(){
 
 function renderPreview(){
   const d=payload(); const rows=d.professores.map((p,i)=>`<tr><td>${i+1}</td><td>${escapeHtml(p.nome)}</td><td>${escapeHtml(p.situacao)}</td><td>________________</td></tr>`).join('');
-  $('preview').innerHTML=`<div class="meta"><b>Data:</b> ${escapeHtml(d.data)}<b>Horário:</b> ${escapeHtml(d.horarioInicio)}${d.horarioFim?' às '+escapeHtml(d.horarioFim):''}<b>Coordenador:</b> ${escapeHtml(d.coordenadorPrincipal)}<b>Responsável pela ata:</b> ${escapeHtml(d.redator)}</div><h3>PAUTA</h3><p>${escapeHtml(d.pauta||'—').replace(/\n/g,'<br>')}</p><h3>ATA DO ATPC</h3><p>${escapeHtml(d.ata||'A ata gerada aparecerá aqui.').replace(/\n/g,'<br>')}</p>${d.encaminhamentos?`<h3>ENCAMINHAMENTOS / COMBINADOS</h3><p>${escapeHtml(d.encaminhamentos).replace(/\n/g,'<br>')}</p>`:''}<h3>LISTA DE PRESENÇA</h3><table><thead><tr><th>Nº</th><th>Professor</th><th>Situação</th><th>Assinatura</th></tr></thead><tbody>${rows}</tbody></table>`;
+  $('preview').innerHTML=`<div class="meta"><b>Data:</b> ${escapeHtml(d.data)}<b>Horário:</b> ${escapeHtml(d.horarioInicio)}${d.horarioFim?' às '+escapeHtml(d.horarioFim):''}<b>Coordenador:</b> ${escapeHtml(d.coordenadorPrincipal)}</div><h3>ATA DO ATPC</h3><p>${escapeHtml(d.ata||'A ata gerada aparecerá aqui.').replace(/\n/g,'<br>')}</p>${d.encaminhamentos?`<h3>ENCAMINHAMENTOS / COMBINADOS</h3><p>${escapeHtml(d.encaminhamentos).replace(/\n/g,'<br>')}</p>`:''}<h3>LISTA DE PRESENÇA</h3><table><thead><tr><th>Nº</th><th>Professor</th><th>Situação</th><th>Assinatura</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 
 async function downloadDoc(url,ext){
@@ -104,5 +112,5 @@ async function downloadDoc(url,ext){
 }
 function salvarHistorico(){const h=JSON.parse(localStorage.getItem('atpc-historico')||'[]');h.unshift({...payload(),salvoEm:new Date().toISOString()});localStorage.setItem('atpc-historico',JSON.stringify(h.slice(0,100)));alert('ATPC salva no histórico deste navegador.');}
 function abrirHistorico(){const h=JSON.parse(localStorage.getItem('atpc-historico')||'[]');$('historicoLista').innerHTML=h.length?h.map((x,i)=>`<div class="history-item"><div><b>${escapeHtml(x.coordenadorPrincipal)} • ${escapeHtml(x.data)}</b><br><small>${escapeHtml(x.horarioInicio)}${x.horarioFim?'–'+escapeHtml(x.horarioFim):''} • ${x.professores.filter(p=>p.situacao==='Presente').length} presentes</small></div><button class="secondary" onclick="carregarHistorico(${i})">Carregar</button></div>`).join(''):'<p>Nenhuma ATPC salva ainda.</p>';$('historicoDialog').showModal();}
-window.carregarHistorico=i=>{const h=JSON.parse(localStorage.getItem('atpc-historico')||'[]'),x=h[i];if(!x)return;$('coordenador').value=x.coordenadorPrincipal;loadCoord();$('data').value=x.dataISO||'';$('inicio').value=x.horarioInicio||'';$('fim').value=x.horarioFim||'';$('pauta').value=x.pauta||'';$('informacoes').value=x.informacoes||'';$('encaminhamentos').value=x.encaminhamentos||'';$('ata').value=x.ata||'';$('redator').value=coordenadores.includes(x.redator)?x.redator:x.coordenadorPrincipal;$('redatorOutro').value=coordenadores.includes(x.redator)?'':(x.redator||'');professoresAtuais=x.professores||[];renderProfessores();(x.coordenadoresParticipantes||[]).forEach(c=>{const cb=[...$('coordsExtras').querySelectorAll('input')].find(y=>y.value===c);if(cb)cb.checked=true});renderPreview();$('historicoDialog').close()};
+window.carregarHistorico=i=>{const h=JSON.parse(localStorage.getItem('atpc-historico')||'[]'),x=h[i];if(!x)return;$('coordenador').value=x.coordenadorPrincipal;loadCoord();$('data').value=x.dataISO||'';$('inicio').value=x.horarioInicio||'';$('fim').value=x.horarioFim||'';$('pauta').value=x.pauta||'';$('informacoes').value=x.informacoes||'';$('encaminhamentos').value=x.encaminhamentos||'';$('ata').value=x.ata||'';professoresAtuais=x.professores||[];renderProfessores();updateRedatorOptions(x.redator||'');$('redatorOutro').value=[...$('redator').options].some(o=>o.value===x.redator)?'':(x.redator||'');(x.coordenadoresParticipantes||[]).forEach(c=>{const cb=[...$('coordsExtras').querySelectorAll('input')].find(y=>y.value===c);if(cb)cb.checked=true});renderPreview();$('historicoDialog').close()};
 init();

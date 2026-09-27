@@ -44,7 +44,34 @@ app.post('/api/gerar-ata', async (req, res) => {
   if (!process.env.OPENAI_API_KEY) return res.json({ ata: fallback, modo: 'modelo-local' });
   try {
     const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-    const prompt = `Você redige atas de ATPC de uma escola pública estadual de São Paulo.\n\nREGRAS:\n- Produza uma ata formal, clara, objetiva e pedagógica.\n- NÃO invente acontecimentos, decisões, nomes, leis, falas ou informações.\n- Use obrigatoriamente todos os pontos de \"Informações que não podem faltar\".\n- Diferencie pauta planejada do que efetivamente foi discutido.\n- Inclua encaminhamentos quando fornecidos.\n- Cite coordenador principal, coordenadores participantes, data, horário e responsável pela redação.\n- Não liste CPFs/RGs no corpo da ata.\n- Não mencione que foi gerada por IA.\n\nDADOS:\n${JSON.stringify(data, null, 2)}\n\nEscreva somente o texto final da ata.`;
+    const prompt = `Você redige atas de ATPC de uma escola pública estadual de São Paulo.
+
+OBJETIVO DE EXTENSÃO:
+- A ATPC corresponde a 2 aulas de 50 minutos (100 minutos).
+- Gere SEMPRE uma ata longa, detalhada e consistente com um encontro formativo de aproximadamente 100 minutos.
+- Como referência, produza aproximadamente 900 a 1.400 palavras, distribuídas em 8 a 12 parágrafos bem desenvolvidos.
+- O texto deve ser substancioso, mas sem repetições artificiais, enchimento ou frases vazias.
+
+REGRAS DE CONTEÚDO:
+- Produza uma ata formal, clara, pedagógica e adequada a registro escolar oficial.
+- Você PODE desenvolver fatos pedagógicos plausíveis, falas indiretas, exemplos de discussão, dúvidas, intervenções e encaminhamentos para dar corpo ao registro, desde que sejam coerentes com a pauta e com os detalhes fornecidos e não contradigam nenhuma informação informada.
+- Não invente nomes de pessoas, números, resultados quantitativos, leis específicas ou acontecimentos externos verificáveis que não tenham sido fornecidos.
+- Use obrigatoriamente TODOS os pontos de "Informações que não podem faltar" e desenvolva cada um deles de forma contextualizada.
+- Use a PAUTA apenas como referência interna para organizar e contextualizar o encontro; NÃO crie no texto uma seção intitulada "Pauta" e NÃO copie a pauta em formato de lista.
+- Desenvolva o relato em sequência lógica: abertura do encontro, contextualização dos temas, discussão pedagógica, orientações, reflexões dos docentes, análise dos pontos informados, encaminhamentos e fechamento.
+- Quando houver encaminhamentos/combinados, incorpore-os naturalmente ao final da ata.
+- Quando houver um professor indicado em "redator", mencione de forma natural em algum ponto do texto corrido que esse professor realizou o registro da ata, sem criar título, campo, linha ou destaque separado para isso.
+- Cite o coordenador principal, a data e o horário quando esses dados forem fornecidos.
+- NÃO inclua a expressão "Outros coordenadores participantes" nem crie uma linha/seção com esse título.
+- Não liste CPFs/RGs no corpo da ata.
+- Não mencione que o texto foi gerado por IA.
+- Não transforme o texto em tópicos; escreva em parágrafos corridos e formais.
+- Se as informações fornecidas forem curtas, amplie o texto com desenvolvimento pedagógico plausível e coerente com o tema, incluindo reflexões, exemplos, dúvidas e intervenções compatíveis com uma formação de 100 minutos.
+
+DADOS:
+${JSON.stringify(data, null, 2)}
+
+Escreva somente o texto final da ata.`;
     const response = await client.responses.create({
       model: process.env.OPENAI_MODEL || 'gpt-5.6',
       input: prompt
@@ -99,12 +126,8 @@ function buildDocx(data) {
     new Paragraph({ children: [] }),
     new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: [
       new TableRow({ children: [cell(`Data: ${clean(data.data)}`, { bold: true, width: 35 }), cell(`Horário: ${clean(data.horarioInicio)}${data.horarioFim ? ' às ' + clean(data.horarioFim) : ''}`, { bold: true, width: 35 }), cell(`Dia: ${clean(data.diaSemana)}`, { bold: true, width: 30 })] }),
-      new TableRow({ children: [cell(`Coordenador(a) responsável: ${clean(data.coordenadorPrincipal)}`, { bold: true, width: 50 }), cell(`Responsável pela ata: ${clean(data.redator)}`, { bold: true, width: 50 })] }),
-      new TableRow({ children: [cell(`Outros coordenadores participantes: ${coordParticipantes.length ? coordParticipantes.join(', ') : '—'}`, { width: 100 })] })
+      new TableRow({ children: [cell(`Coordenador(a) responsável: ${clean(data.coordenadorPrincipal)}`, { bold: true, width: 100 })] }),
     ]}),
-    new Paragraph({ children: [] }),
-    new Paragraph({ heading: HeadingLevel.HEADING_2, alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'PAUTA', bold: true })] }),
-    new Paragraph({ children: [new TextRun({ text: clean(data.pauta) || '—', size: 22 })] }),
     new Paragraph({ children: [] }),
     new Paragraph({ heading: HeadingLevel.HEADING_2, alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'ATA DO ATPC', bold: true })] }),
     ...clean(data.ata).split(/\n\n+/).map(t => new Paragraph({ alignment: AlignmentType.JUSTIFIED, spacing: { after: 150 }, children: [new TextRun({ text: t, size: 22 })] })),
